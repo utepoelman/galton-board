@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galton Board & Binomial Plinko Simulator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #090d16;
+            color: #f1f5f9;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        /* Glassmorphism styling */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        /* Custom Range Input */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #334155;
+            border-radius: 3px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -6px;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+            transition: transform 0.1s ease;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden antialiased selection:bg-brand-500 selection:text-white">
+
+    <!-- Top Header Navigation -->
+    <header class="w-full glass-panel sticky top-0 z-30 border-b border-slate-800/80 px-4 lg:px-8 py-3.5 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="p-2 bg-brand-500/10 border border-brand-500/30 rounded-xl text-brand-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-lg lg:text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                    Galton Board <span class="text-brand-400 font-normal text-sm lg:text-base ml-1">Plinko & Binomial Visualizer</span>
+                </h1>
+                <p class="text-xs text-slate-400 hidden sm:block">Interactive Bernoulli Trials & Statistical Distribution Engine</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2 sm:space-x-3">
+            <!-- Audio Toggle Button -->
+            <button id="btn-audio" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300 transition hover:text-white flex items-center space-x-1.5 text-xs font-medium" title="Toggle Sound Effects">
+                <svg id="icon-audio-on" class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                </svg>
+                <svg id="icon-audio-off" class="w-4 h-4 text-slate-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                </svg>
+                <span id="label-audio" class="hidden md:inline">Audio On</span>
+            </button>
+
+            <!-- Background & Math Info Modal Trigger Button -->
+            <button id="btn-math-info" class="p-2.5 rounded-xl bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/30 text-brand-300 transition flex items-center space-x-1.5 text-xs font-semibold">
+                <svg class="w-4 h-4 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Background & Math Info</span>
+            </button>
+
+            <!-- Reset Board Button -->
+            <button id="btn-reset" class="p-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 transition flex items-center space-x-1.5 text-xs font-medium">
+                <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <span class="hidden sm:inline">Reset</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Interactive Workspace -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- Left Workspace Column: Galton Board Simulation Canvas (Col 7) -->
+            <div class="lg:col-span-7 flex flex-col space-y-4">
+                <div class="glass-panel rounded-2xl p-4 sm:p-5 flex flex-col items-center justify-between shadow-2xl relative overflow-hidden">
+                    
+                    <!-- Canvas Top Controls Bar -->
+                    <div class="w-full flex items-center justify-between mb-3 text-xs text-slate-300 px-1">
+                        <div class="flex items-center space-x-2">
+                            <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span class="font-semibold uppercase tracking-wider text-slate-400">Canvas Physics View</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <label for="speed-slider" class="text-slate-400 font-medium">Speed:</label>
+                            <input id="speed-slider" type="range" min="1" max="10" value="5" class="w-20 sm:w-28">
+                            <span id="speed-val" class="font-mono text-brand-400 text-xs w-6 text-right">1.0x</span>
+                        </div>
+                    </div>
+
+                    <!-- Main Plinko Canvas -->
+                    <div class="relative w-full aspect-[4/3] bg-slate-950/80 rounded-xl border border-slate-800/80 shadow-inner overflow-hidden flex items-center justify-center">
+                        <canvas id="plinko-canvas" class="w-full h-full block cursor-pointer"></canvas>
+                        
+                        <!-- Floating Live Total Drops Overlay Badge -->
+                        <div class="absolute top-3 left-3 bg-slate-900/80 backdrop-blur border border-slate-700/60 rounded-lg px-3 py-1.5 flex items-center space-x-2">
+                            <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Total Drops:</span>
+                            <span id="canvas-total-drops" class="font-mono font-bold text-base text-brand-400">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Drop Simulation Action Buttons -->
+                    <div class="w-full grid grid-cols-2 sm:grid-cols-6 gap-2 mt-4">
+                        <button id="btn-drop-1" class="py-2.5 px-3 bg-brand-500 hover:bg-brand-400 active:scale-95 text-slate-950 font-bold text-xs rounded-xl transition shadow-lg shadow-brand-500/20 flex items-center justify-center space-x-1">
+                            <span>Drop 1</span>
+                        </button>
+                        <button id="btn-drop-10" class="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700 transition">
+                            <span>+10</span>
+                        </button>
+                        <button id="btn-drop-100" class="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700 transition">
+                            <span>+100</span>
+                        </button>
+                        <button id="btn-drop-1000" class="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700 transition">
+                            <span>+1,000</span>
+                        </button>
+                        <button id="btn-drop-10000" class="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700 transition">
+                            <span>+10,000</span>
+                        </button>
+                        <button id="btn-auto-drop" class="col-span-2 sm:col-span-1 py-2.5 px-3 bg-slate-800 border border-slate-700 hover:border-emerald-500/50 text-slate-300 font-semibold text-xs rounded-xl transition flex items-center justify-center space-x-1">
+                            <span id="auto-drop-dot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+                            <span id="auto-drop-label">Auto</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Workspace Column: Setup Controls & Live Analytics (Col 5) -->
+            <div class="lg:col-span-5 flex flex-col space-y-5">
+                
+                <!-- Setup & Controls Card -->
+                <div class="glass-panel rounded-2xl p-5 space-y-5">
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center space-x-2">
+                        <svg class="w-4 h-4 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                        </svg>
+                        <span>Simulation Setup</span>
+                    </h2>
+
+                    <!-- Number of Rows Slider (n) -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center text-xs">
+                            <label for="rows-slider" class="font-semibold text-slate-300">Number of Rows (<span class="italic">n</span>):</label>
+                            <span id="rows-val" class="font-mono font-bold text-sm text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded border border-brand-500/20">10</span>
+                        </div>
+                        <input id="rows-slider" type="range" min="2" max="20" step="1" value="10" class="w-full">
+                        <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                            <span>2</span>
+                            <span>5</span>
+                            <span>10</span>
+                            <span>15</span>
+                            <span>20</span>
+                        </div>
+                    </div>
+
+                    <!-- Probability Slider (p) -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center text-xs">
+                            <label for="prob-slider" class="font-semibold text-slate-300">Right Probability (<span class="italic">p</span>):</label>
+                            <span id="prob-val" class="font-mono font-bold text-sm text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded border border-brand-500/20">0.50</span>
+                        </div>
+                        <input id="prob-slider" type="range" min="0.00" max="1.00" step="0.01" value="0.50" class="w-full">
+                        
+                        <!-- Quick Presets for Probability -->
+                        <div class="flex items-center justify-between gap-1.5 pt-1">
+                            <button id="preset-p-025" class="flex-1 py-1 px-2 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition font-mono">p = 0.25</button>
+                            <button id="preset-p-050" class="flex-1 py-1 px-2 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition font-mono">p = 0.50</button>
+                            <button id="preset-p-075" class="flex-1 py-1 px-2 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition font-mono">p = 0.75</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Statistical Metrics Card -->
+                <div class="glass-panel rounded-2xl p-5 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center space-x-2">
+                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                            <span>Live Statistics</span>
+                        </h2>
+                        <div class="flex items-center space-x-2">
+                            <input id="toggle-theoretical" type="checkbox" checked class="w-3.5 h-3.5 rounded bg-slate-800 border-slate-700 text-brand-500 focus:ring-0 cursor-pointer">
+                            <label for="toggle-theoretical" class="text-xs text-slate-300 cursor-pointer font-medium select-none">Show Theoretical Curve</label>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Grid -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="glass-card p-3 rounded-xl">
+                            <div class="text-[11px] font-medium text-slate-400">Sample Mean (<span class="italic">x̄</span>)</div>
+                            <div id="stat-mean" class="text-lg font-bold font-mono text-white mt-0.5">0.000</div>
+                            <div class="text-[10px] text-slate-500 mt-1">Expected μ = <span id="stat-exp-mean" class="font-mono text-slate-400">5.000</span></div>
+                        </div>
+
+                        <div class="glass-card p-3 rounded-xl">
+                            <div class="text-[11px] font-medium text-slate-400">Std Deviation (<span class="italic">s</span>)</div>
+                            <div id="stat-std" class="text-lg font-bold font-mono text-white mt-0.5">0.000</div>
+                            <div class="text-[10px] text-slate-500 mt-1">Expected σ = <span id="stat-exp-std" class="font-mono text-slate-400">1.581</span></div>
+                        </div>
+
+                        <div class="glass-card p-3 rounded-xl">
+                            <div class="text-[11px] font-medium text-slate-400">Min / Max Bin</div>
+                            <div id="stat-minmax" class="text-base font-bold font-mono text-slate-200 mt-0.5">- / -</div>
+                            <div class="text-[10px] text-slate-500 mt-1">Range: [0, <span id="stat-max-range">10</span>]</div>
+                        </div>
+
+                        <div class="glass-card p-3 rounded-xl">
+                            <div class="text-[11px] font-medium text-slate-400">Distribution Fit Error</div>
+                            <div id="stat-rmse" class="text-base font-bold font-mono text-slate-200 mt-0.5">0.00%</div>
+                            <div class="text-[10px] text-slate-500 mt-1">RMSE vs Theoretical</div>
+                        </div>
+                    </div>
+
+                    <!-- CSV Export Button -->
+                    <button id="btn-export-csv" class="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700/80 active:scale-[0.99] border border-slate-700 text-slate-200 font-semibold text-xs rounded-xl transition flex items-center justify-center space-x-2">
+                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span>Export Data Session to CSV</span>
+                    </button>
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full border-t border-slate-800/80 py-4 text-center text-xs text-slate-500">
+        <p>Galton Board & Binomial Distribution Simulator • Pure HTML5 Canvas & Web Audio API</p>
+    </footer>
+
+    <!-- Background & Mathematical Information Modal -->
+    <div id="modal-math" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="glass-panel w-full max-w-3xl max-h-[90vh] rounded-2xl border border-slate-700 shadow-2xl flex flex-col overflow-hidden">
+            
+            <!-- Modal Header -->
+            <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
+                <div class="flex items-center space-x-2.5">
+                    <div class="p-2 bg-brand-500/10 rounded-lg text-brand-400">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                    </div>
+                    <h3 class="text-base font-bold text-white">Mathematical Foundation & Background Info</h3>
+                </div>
+                <button id="btn-close-modal" class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Content (Scrollable) -->
+            <div class="p-6 overflow-y-auto space-y-6 text-slate-300 text-sm leading-relaxed">
+                
+                <!-- Section 1 -->
+                <section class="space-y-2">
+                    <h4 class="text-base font-bold text-brand-400 flex items-center space-x-2">
+                        <span>1. What is a Galton Board?</span>
+                    </h4>
+                    <p>
+                        Invented by Sir Francis Galton in 1889, the <strong>Galton Board</strong> (or Plinko machine) is a physical demonstration of how random physical events assemble into predictable statistical patterns. As marbles fall through a triangular grid of pegs, each peg forces a marble to bounce either to the <em>Left</em> or <em>Right</em>.
+                    </p>
+                </section>
+
+                <!-- Section 2 -->
+                <section class="space-y-2">
+                    <h4 class="text-base font-bold text-brand-400 flex items-center space-x-2">
+                        <span>2. Bernoulli Trials & The Binomial Distribution B(n, p)</span>
+                    </h4>
+                    <p>
+                        Each peg bounce represents an independent <strong>Bernoulli Trial</strong> with two possible outcomes:
+                    </p>
+                    <ul class="list-disc pl-5 space-y-1 text-slate-400">
+                        <li><strong>Right (R):</strong> Occurs with probability <span class="font-mono text-emerald-400">p</span> (Success).</li>
+                        <li><strong>Left (L):</strong> Occurs with probability <span class="font-mono text-emerald-400">1 - p</span> (Failure).</li>
+                    </ul>
+                    <p>
+                        For a board with <span class="font-mono text-brand-300">n</span> rows of pegs, each marble undergoes exactly <span class="font-mono text-brand-300">n</span> independent bounces. The final bin index <span class="font-mono text-brand-300">k</span> (where <span class="font-mono text-brand-300">0 ≤ k ≤ n</span>) equals the total number of Right bounces.
+                    </p>
+                </section>
+
+                <!-- Section 3 -->
+                <section class="glass-card p-4 rounded-xl space-y-3 border border-slate-700/60 font-mono text-xs">
+                    <div class="text-slate-200 font-bold text-sm font-sans mb-1">Probability Mass Function (PMF):</div>
+                    <div class="bg-slate-950 p-3 rounded-lg text-center text-brand-300 font-bold text-sm tracking-wide">
+                        P(X = k) = C(n, k) × p<sup>k</sup> × (1 - p)<sup>n - k</sup>
+                    </div>
+                    <div class="text-slate-400 font-sans text-xs space-y-1">
+                        <p>Where:</p>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li><strong>C(n, k) = n! / [k! (n - k)!]</strong> is the combination formula (Pascal's Triangle entry).</li>
+                            <li><strong>E[X] = n × p</strong> is the theoretical Mean (Expected Value).</li>
+                            <li><strong>Var(X) = n × p × (1 - p)</strong> is the theoretical Variance.</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Section 4 -->
+                <section class="space-y-2">
+                    <h4 class="text-base font-bold text-brand-400 flex items-center space-x-2">
+                        <span>3. Connection to Pascal's Triangle</span>
+                    </h4>
+                    <p>
+                        When <span class="font-mono text-emerald-400">p = 0.50</span>, the number of distinct paths leading to bin <span class="font-mono text-brand-300">k</span> corresponds exactly to the <span class="font-mono text-brand-300">k</span>-th entry in the <span class="font-mono text-brand-300">n</span>-th row of <strong>Pascal's Triangle</strong>.
+                    </p>
+                </section>
+
+                <!-- Section 5 -->
+                <section class="space-y-2">
+                    <h4 class="text-base font-bold text-brand-400 flex items-center space-x-2">
+                        <span>4. The Central Limit Theorem (CLT)</span>
+                    </h4>
+                    <p>
+                        As the number of rows <span class="font-mono text-brand-300">n</span> increases, the discrete Binomial Distribution approaches a continuous <strong>Normal (Gaussian) Distribution</strong> curve with mean <span class="font-mono text-slate-200 font-semibold">μ = np</span> and standard deviation <span class="font-mono text-slate-200 font-semibold">σ = √(np(1-p))</span>. This explains why physical Galton boards form a smooth bell curve.
+                    </p>
+                </section>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-slate-800 bg-slate-900/60 flex justify-end">
+                <button id="btn-close-modal-bottom" class="py-2 px-5 bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs rounded-xl transition">
+                    Got it!
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // =====================================================================
+        // APPLICATION STATE & GLOBAL CONFIGURATION
+        // =====================================================================
+        const state = {
+            n: 10,                 // Number of rows (pegs) [2..20]
+            p: 0.50,               // Probability of right bounce [0.00..1.00]
+            totalDrops: 0,         // Total marbles dropped in session
+            binCounts: [],         // Array of size (n+1) storing drop counts
+            rawLogs: [],           // Drop logs: { id, path, bin } (capped at 10,000)
+            
+            // Animation & Visual State
+            marbles: [],           // Active animated marble objects
+            speed: 1.0,            // Speed multiplier [0.2..3.0]
+            isAutoDropping: false, // Auto-drop continuous state
+            autoDropTimer: null,   // Interval ID for auto-dropping
+            
+            // Display Toggles
+            showTheoretical: true, // Show expected binomial curve overlay
+            isMuted: false         // Web Audio mute setting
+        };
+
+        // DOM Element Cache
+        const elements = {
+            canvas: document.getElementById('plinko-canvas'),
+            ctx: document.getElementById('plinko-canvas').getContext('2d'),
+            
+            // Controls
+            rowsSlider: document.getElementById('rows-slider'),
+            rowsVal: document.getElementById('rows-val'),
+            probSlider: document.getElementById('prob-slider'),
+            probVal: document.getElementById('prob-val'),
+            speedSlider: document.getElementById('speed-slider'),
+            speedVal: document.getElementById('speed-val'),
+            
+            // Preset Buttons
+            presetP025: document.getElementById('preset-p-025'),
+            presetP050: document.getElementById('preset-p-050'),
+            presetP075: document.getElementById('preset-p-075'),
+            
+            // Action Buttons
+            btnDrop1: document.getElementById('btn-drop-1'),
+            btnDrop10: document.getElementById('btn-drop-10'),
+            btnDrop100: document.getElementById('btn-drop-100'),
+            btnDrop1000: document.getElementById('btn-drop-1000'),
+            btnDrop10000: document.getElementById('btn-drop-10000'),
+            btnAutoDrop: document.getElementById('btn-auto-drop'),
+            autoDropDot: document.getElementById('auto-drop-dot'),
+            autoDropLabel: document.getElementById('auto-drop-label'),
+            btnReset: document.getElementById('btn-reset'),
+            btnExportCSV: document.getElementById('btn-export-csv'),
+            
+            // Audio & Modal
+            btnAudio: document.getElementById('btn-audio'),
+            iconAudioOn: document.getElementById('icon-audio-on'),
+            iconAudioOff: document.getElementById('icon-audio-off'),
+            labelAudio: document.getElementById('label-audio'),
+            btnMathInfo: document.getElementById('btn-math-info'),
+            modalMath: document.getElementById('modal-math'),
+            btnCloseModal: document.getElementById('btn-close-modal'),
+            btnCloseModalBottom: document.getElementById('btn-close-modal-bottom'),
+            
+            // Stats Panel
+            canvasTotalDrops: document.getElementById('canvas-total-drops'),
+            statMean: document.getElementById('stat-mean'),
+            statExpMean: document.getElementById('stat-exp-mean'),
+            statStd: document.getElementById('stat-std'),
+            statExpStd: document.getElementById('stat-exp-std'),
+            statMinMax: document.getElementById('stat-minmax'),
+            statMaxRange: document.getElementById('stat-max-range'),
+            statRmse: document.getElementById('stat-rmse'),
+            toggleTheoretical: document.getElementById('toggle-theoretical')
+        };
+
+        // =====================================================================
+        // WEB AUDIO API SYNTHESIZER
+        // =====================================================================
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    audioCtx = new AudioContext();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playPegSound(rowRatio) {
+            if (state.isMuted || !audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                // Frequency varies smoothly from higher pitch at top to lower at bottom
+                const baseFreq = 520 - (rowRatio * 260); 
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
+                
+                gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.04);
+            } catch (e) {
+                // Ignore audio context autoplay errors
+            }
+        }
+
+        function playBinSound() {
+            if (state.isMuted || !audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.08);
+                
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.08);
+            } catch (e) {
+                // Ignore audio context autoplay errors
+            }
+        }
+
+        // =====================================================================
+        // MATHEMATICAL HELPERS (Binomial Formulas & Combinatorics)
+        // =====================================================================
+        
+        // Exact Combinations C(n, k)
+        function nCr(n, k) {
+            if (k < 0 || k > n) return 0;
+            if (k === 0 || k === n) return 1;
+            if (k > n / 2) k = n - k;
+            let res = 1;
+            for (let i = 1; i <= k; i++) {
+                res = res * (n - i + 1) / i;
+            }
+            return res;
+        }
+
+        // Theoretical Binomial PMF: P(X = k)
+        function theoreticalProbability(n, k, p) {
+            if (p === 0) return k === 0 ? 1 : 0;
+            if (p === 1) return k === n ? 1 : 0;
+            return nCr(n, k) * Math.pow(p, k) * Math.pow(1 - p, n - k);
+        }
+
+        // =====================================================================
+        // CANVAS RENDERING ENGINE
+        // =====================================================================
+        
+        // Canvas geometry variables calculated dynamically on resize/render
+        let geom = {
+            width: 0,
+            height: 0,
+            startX: 0,
+            startY: 0,
+            dx: 0,
+            dy: 0,
+            pegRadius: 0,
+            marbleRadius: 0,
+            binY: 0,
+            binHeight: 0
+        };
+
+        function resizeCanvas() {
+            const rect = elements.canvas.parentElement.getBoundingClientRect();
+            // Handle high DPI crispness
+            const dpr = window.devicePixelRatio || 1;
+            elements.canvas.width = rect.width * dpr;
+            elements.canvas.height = rect.height * dpr;
+            
+            geom.width = rect.width;
+            geom.height = rect.height;
+            elements.ctx.scale(dpr, dpr);
+            
+            calculateGeometry();
+        }
+
+        function calculateGeometry() {
+            const n = state.n;
+            const paddingX = 30;
+            const topMargin = 40;
+            const bottomMargin = 80;
+            
+            geom.startY = topMargin;
+            geom.binY = geom.height - bottomMargin;
+            geom.binHeight = bottomMargin - 15;
+            
+            const availableWidth = geom.width - (paddingX * 2);
+            const availableHeight = geom.binY - geom.startY;
+            
+            // Horizontal step distance between adjacent pegs in a row
+            geom.dx = Math.min(availableWidth / (n + 1.5), 45);
+            // Vertical step distance between peg rows
+            geom.dy = availableHeight / (n + 1);
+            
+            geom.startX = geom.width / 2;
+            geom.pegRadius = Math.max(2, Math.min(6, geom.dx / 6));
+            geom.marbleRadius = Math.max(3, Math.min(7, geom.dx / 4));
+        }
+
+        // Converts peg coordinate (row r, index j) to screen (X, Y)
+        function getPegPos(r, j) {
+            // Row r has r+1 pegs, centered horizontally
+            const x = geom.startX + (j - r / 2) * geom.dx;
+            const y = geom.startY + r * geom.dy;
+            return { x, y };
+        }
+
+        // Converts bin index k to bottom screen X position
+        function getBinX(k) {
+            return geom.startX + (k - state.n / 2) * geom.dx;
+        }
+
+        function render() {
+            const ctx = elements.ctx;
+            ctx.clearRect(0, 0, geom.width, geom.height);
+            
+            // 1. Draw Bins & Frequency Histogram Bars at Bottom
+            drawBins(ctx);
+            
+            // 2. Draw Theoretical Binomial Distribution Overlay Curve (if enabled)
+            if (state.showTheoretical) {
+                drawTheoreticalCurve(ctx);
+            }
+
+            // 3. Draw Triangular Peg Grid
+            drawPegs(ctx);
+
+            // 4. Draw Active Animated Marbles
+            updateAndDrawMarbles(ctx);
+
+            requestAnimationFrame(render);
+        }
+
+        // Draw Pegs
+        function drawPegs(ctx) {
+            ctx.fillStyle = '#38bdf8';
+            ctx.shadowBlur = 6;
+            ctx.shadowColor = 'rgba(56, 189, 248, 0.6)';
+
+            for (let r = 0; r < state.n; r++) {
+                for (let j = 0; j <= r; j++) {
+                    const { x, y } = getPegPos(r, j);
+                    ctx.beginPath();
+                    ctx.arc(x, y, geom.pegRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            ctx.shadowBlur = 0; // Reset shadow for performance
+        }
+
+        // Draw Bins & Counts
+        function drawBins(ctx) {
+            const n = state.n;
+            const maxCount = Math.max(...state.binCounts, 1);
+
+            for (let k = 0; k <= n; k++) {
+                const binX = getBinX(k);
+                const count = state.binCounts[k] || 0;
+                const ratio = count / (state.totalDrops || 1);
+                
+                // Bin Divider Lines
+                ctx.strokeStyle = 'rgba(51, 65, 85, 0.6)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(binX - geom.dx / 2, geom.binY);
+                ctx.lineTo(binX - geom.dx / 2, geom.binY + geom.binHeight);
+                if (k === n) {
+                    ctx.moveTo(binX + geom.dx / 2, geom.binY);
+                    ctx.lineTo(binX + geom.dx / 2, geom.binY + geom.binHeight);
+                }
+                ctx.stroke();
+
+                // Empirical Frequency Bar
+                const barMaxHeight = geom.binHeight - 18;
+                // Scale bar height relative to max bin count
+                const barHeight = (count / maxCount) * barMaxHeight;
+                
+                if (count > 0) {
+                    const barX = binX - (geom.dx * 0.4);
+                    const barWidth = geom.dx * 0.8;
+                    const barY = geom.binY + geom.binHeight - barHeight;
+
+                    // Gradient fill for frequency bar
+                    const grad = ctx.createLinearGradient(0, barY, 0, geom.binY + geom.binHeight);
+                    grad.addColorStop(0, '#0ea5e9');
+                    grad.addColorStop(1, '#0369a1');
+
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.roundRect(barX, barY, barWidth, barHeight, [3, 3, 0, 0]);
+                    ctx.fill();
+                }
+
+                // Bin Index Label
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = `${Math.max(9, Math.min(12, geom.dx / 2.8))}px JetBrains Mono, monospace`;
+                ctx.textAlign = 'center';
+                ctx.fillText(k, binX, geom.binY + geom.binHeight + 12);
+
+                // Bin Count / Percentage Label
+                if (count > 0) {
+                    const pctStr = (ratio * 100).toFixed(n > 12 ? 0 : 1) + '%';
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.font = `${Math.max(8, Math.min(10, geom.dx / 3.2))}px Inter, sans-serif`;
+                    ctx.fillText(count, binX, geom.binY + geom.binHeight - barHeight - 4);
+                }
+            }
+        }
+
+        // Draw Theoretical Overlay Curve
+        function drawTheoreticalCurve(ctx) {
+            const n = state.n;
+            const p = state.p;
+            const maxCount = Math.max(...state.binCounts, 1);
+            const barMaxHeight = geom.binHeight - 18;
+
+            ctx.beginPath();
+            let first = true;
+
+            for (let k = 0; k <= n; k++) {
+                const binX = getBinX(k);
+                const theoreticalP = theoreticalProbability(n, k, p);
+                
+                // Scale curve to match maximum bar height scale
+                let expectedHeight = 0;
+                if (state.totalDrops > 0) {
+                    // Match scale of empirical counts
+                    const expectedCount = theoreticalP * state.totalDrops;
+                    expectedHeight = (expectedCount / maxCount) * barMaxHeight;
+                } else {
+                    // Default curve visual when 0 drops
+                    const maxP = theoreticalProbability(n, Math.round(n * p), p);
+                    expectedHeight = (theoreticalP / (maxP || 1)) * (barMaxHeight * 0.8);
+                }
+                
+                // Clamp height to bin area
+                expectedHeight = Math.min(expectedHeight, geom.binHeight - 5);
+                const curveY = geom.binY + geom.binHeight - expectedHeight;
+
+                if (first) {
+                    ctx.moveTo(binX, curveY);
+                    first = false;
+                } else {
+                    ctx.lineTo(binX, curveY);
+                }
+            }
+
+            ctx.strokeStyle = '#f59e0b'; // Amber theoretical curve line
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([4, 3]); // Dashed curve
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset line dash
+
+            // Draw theoretical points
+            for (let k = 0; k <= n; k++) {
+                const binX = getBinX(k);
+                const theoreticalP = theoreticalProbability(n, k, p);
+                let expectedHeight = 0;
+                if (state.totalDrops > 0) {
+                    const expectedCount = theoreticalP * state.totalDrops;
+                    expectedHeight = (expectedCount / maxCount) * barMaxHeight;
+                } else {
+                    const maxP = theoreticalProbability(n, Math.round(n * p), p);
+                    expectedHeight = (theoreticalP / (maxP || 1)) * (barMaxHeight * 0.8);
+                }
+                expectedHeight = Math.min(expectedHeight, geom.binHeight - 5);
+                const curveY = geom.binY + geom.binHeight - expectedHeight;
+
+                ctx.fillStyle = '#fbbf24';
+                ctx.beginPath();
+                ctx.arc(binX, curveY, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // =====================================================================
+        // MARBLE PHYSICS & ANIMATION LOGIC
+        // =====================================================================
+
+        class Marble {
+            constructor(path, targetBin, colorHue) {
+                this.path = path;            // Array of 'L' or 'R' choices
+                this.targetBin = targetBin;  // Final bin index k
+                this.hue = colorHue || Math.floor(Math.random() * 360);
+                
+                this.step = 0;               // Current peg row (0..n)
+                this.progress = 0;           // Interpolation progress between rows [0..1]
+                this.j = 0;                  // Current horizontal peg index in row
+
+                this.x = geom.startX;
+                this.y = geom.startY - 20;   // Start slightly above top peg
+            }
+
+            update(dt) {
+                // Adjust speed based on global slider and row count
+                const stepSpeed = state.speed * (1 + state.n * 0.08) * 4.0;
+                this.progress += dt * stepSpeed;
+
+                if (this.step < state.n) {
+                    // Current start position (above current peg)
+                    const startPos = (this.step === 0) 
+                        ? { x: geom.startX, y: geom.startY - 20 }
+                        : getPegPos(this.step - 1, this.j);
+
+                    // Decision at this step ('R' -> j increases by 1, 'L' -> j remains same)
+                    const choice = this.path[this.step];
+                    const nextJ = (choice === 'R') ? this.j + 1 : this.j;
+                    const endPos = getPegPos(this.step, nextJ);
+
+                    // Interpolate position with gravity parabolic bounce curve
+                    const t = Math.min(this.progress, 1);
+                    this.x = startPos.x + (endPos.x - startPos.x) * t;
+                    
+                    // Arc lift effect for bouncing
+                    const arc = Math.sin(t * Math.PI) * (geom.dy * 0.25);
+                    this.y = startPos.y + (endPos.y - startPos.y) * t - arc;
+
+                    // Reached peg bounce point
+                    if (this.progress >= 1) {
+                        this.progress = 0;
+                        this.j = nextJ;
+                        this.step++;
+
+                        // Play peg sound
+                        playPegSound(this.step / state.n);
+
+                        // Landed in final bin
+                        if (this.step === state.n) {
+                            playBinSound();
+                        }
+                    }
+                } else {
+                    // Final Drop into Bin Animation
+                    const binX = getBinX(this.targetBin);
+                    const binY = geom.binY + geom.binHeight - 6;
+
+                    const t = Math.min(this.progress, 1);
+                    const lastPegPos = getPegPos(state.n - 1, this.j);
+
+                    this.x = lastPegPos.x + (binX - lastPegPos.x) * t;
+                    this.y = lastPegPos.y + (binY - lastPegPos.y) * t;
+
+                    if (this.progress >= 1) {
+                        return true; // Finished trajectory
+                    }
+                }
+                return false;
+            }
+
+            draw(ctx) {
+                ctx.fillStyle = `hsl(${this.hue}, 90%, 60%)`;
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = `hsl(${this.hue}, 90%, 50%)`;
+                
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, geom.marbleRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Marble specular highlight
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.beginPath();
+                ctx.arc(this.x - geom.marbleRadius * 0.3, this.y - geom.marbleRadius * 0.3, geom.marbleRadius * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        function updateAndDrawMarbles(ctx) {
+            const dt = 0.016; // Standard frame delta (~60fps)
+            for (let i = state.marbles.length - 1; i >= 0; i--) {
+                const m = state.marbles[i];
+                const done = m.update(dt);
+                m.draw(ctx);
+
+                if (done) {
+                    // Add marble to permanent bin data once animation finishes
+                    recordDropResult(m.targetBin, m.path);
+                    state.marbles.splice(i, 1);
+                }
+            }
+        }
+
+        // =====================================================================
+        // SIMULATION ENGINE & DATA LOGIC
+        // =====================================================================
+
+        // Generates a single marble path based on probability p
+        function simulateSingleDrop() {
+            let bin = 0;
+            let path = [];
+            for (let r = 0; r < state.n; r++) {
+                const goRight = Math.random() < state.p;
+                path.push(goRight ? 'R' : 'L');
+                if (goRight) bin++;
+            }
+            return { path, bin };
+        }
+
+        // Trigger marble drops (Animate small batches, fast-process large batches)
+        function triggerDrops(count) {
+            initAudio();
+
+            // If dropping 1 or small batch, animate marbles on canvas
+            if (count <= 20) {
+                for (let i = 0; i < count; i++) {
+                    setTimeout(() => {
+                        const { path, bin } = simulateSingleDrop();
+                        state.marbles.push(new Marble(path, bin));
+                    }, i * 120 / state.speed);
+                }
+            } else {
+                // For large batch drops (+100, +10,000), calculate instantly & update stats
+                for (let i = 0; i < count; i++) {
+                    const { path, bin } = simulateSingleDrop();
+                    recordDropResult(bin, path, false); // suppress live stat redraw per drop
+                }
+                updateStatsUI();
+            }
+        }
+
+        // Records marble result into dataset
+        function recordDropResult(binIndex, pathArray, updateUI = true) {
+            state.totalDrops++;
+            state.binCounts[binIndex]++;
+
+            // Store raw log (capped at 10,000 for memory efficiency)
+            if (state.rawLogs.length < 10000) {
+                state.rawLogs.push({
+                    id: state.totalDrops,
+                    path: pathArray.join(''),
+                    bin: binIndex
+                });
+            }
+
+            if (updateUI) {
+                updateStatsUI();
+            }
+        }
+
+        // Resets or reinitializes simulation data
+        function resetSimulation(resetRowConfig = false) {
+            state.totalDrops = 0;
+            state.binCounts = new Array(state.n + 1).fill(0);
+            state.rawLogs = [];
+            state.marbles = [];
+            
+            if (resetRowConfig) {
+                calculateGeometry();
+            }
+
+            updateStatsUI();
+        }
+
+        // =====================================================================
+        // STATISTICAL ANALYSIS & UI UPDATES
+        // =====================================================================
+
+        function updateStatsUI() {
+            const N = state.totalDrops;
+            const n = state.n;
+            const p = state.p;
+
+            // Total Drops Badge
+            elements.canvasTotalDrops.textContent = N.toLocaleString();
+
+            // Theoretical Metrics
+            const expMean = n * p;
+            const expStd = Math.sqrt(n * p * (1 - p));
+
+            elements.statExpMean.textContent = expMean.toFixed(3);
+            elements.statExpStd.textContent = expStd.toFixed(3);
+            elements.statMaxRange.textContent = n;
+
+            if (N === 0) {
+                elements.statMean.textContent = '0.000';
+                elements.statStd.textContent = '0.000';
+                elements.statMinMax.textContent = '- / -';
+                elements.statRmse.textContent = '0.00%';
+                return;
+            }
+
+            // Calculate Sample Mean & Std Dev
+            let sum = 0;
+            let minBin = -1;
+            let maxBin = -1;
+
+            for (let k = 0; k <= n; k++) {
+                const count = state.binCounts[k];
+                if (count > 0) {
+                    sum += k * count;
+                    if (minBin === -1) minBin = k;
+                    maxBin = k;
+                }
+            }
+
+            const mean = sum / N;
+
+            let varianceSum = 0;
+            let sumSquareDiffTheoretical = 0;
+
+            for (let k = 0; k <= n; k++) {
+                const count = state.binCounts[k];
+                varianceSum += count * Math.pow(k - mean, 2);
+
+                // Calculate RMSE vs Theoretical distribution
+                const empiricalP = count / N;
+                const theoreticalP = theoreticalProbability(n, k, p);
+                sumSquareDiffTheoretical += Math.pow(empiricalP - theoreticalP, 2);
+            }
+
+            const stdDev = Math.sqrt(varianceSum / (N > 1 ? N - 1 : 1));
+            const rmse = Math.sqrt(sumSquareDiffTheoretical / (n + 1)) * 100;
+
+            elements.statMean.textContent = mean.toFixed(3);
+            elements.statStd.textContent = stdDev.toFixed(3);
+            elements.statMinMax.textContent = `${minBin} / ${maxBin}`;
+            elements.statRmse.textContent = `${rmse.toFixed(2)}%`;
+        }
+
+        // =====================================================================
+        // CSV DATA EXPORT ENGINE
+        // =====================================================================
+
+        function exportSessionToCSV() {
+            const n = state.n;
+            const p = state.p;
+            const N = state.totalDrops;
+
+            let csv = [];
+            csv.push('GALTON BOARD & BINOMIAL DISTRIBUTION SIMULATION SESSION DATA');
+            csv.push(`Generated,${new Date().toLocaleString()}`);
+            csv.push(`Number of Rows (n),${n}`);
+            csv.push(`Right Probability (p),${p}`);
+            csv.push(`Total Marbles Dropped (N),${N}`);
+            csv.push('');
+
+            // Table 1: Bin Frequency Summary
+            csv.push('BIN DISTRIBUTION SUMMARY');
+            csv.push('Bin Index (k),Empirical Count,Empirical %,Theoretical Prob,Expected Count');
+
+            for (let k = 0; k <= n; k++) {
+                const count = state.binCounts[k] || 0;
+                const empiricalPct = N > 0 ? ((count / N) * 100).toFixed(4) + '%' : '0.00%';
+                const theoreticalP = theoreticalProbability(n, k, p);
+                const expectedCount = (theoreticalP * N).toFixed(2);
+
+                csv.push(`${k},${count},${empiricalPct},${theoreticalP.toFixed(6)},${expectedCount}`);
+            }
+
+            csv.push('');
+            // Table 2: Detailed Drop Logs (Up to 10,000 recorded)
+            csv.push('RAW MARBLE LOGS (Up to 10,000)');
+            csv.push('Marble ID,Path Sequence (L/R),Final Bin Index (k)');
+
+            state.rawLogs.forEach(log => {
+                csv.push(`${log.id},${log.path},${log.bin}`);
+            });
+
+            const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv.join('\n'));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute('href', csvContent);
+            downloadAnchor.setAttribute('download', `galton_board_n${n}_p${p}_drops${N}.csv`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            document.body.removeChild(downloadAnchor);
+        }
+
+        // =====================================================================
+        // EVENT HANDLERS & EVENT LISTENERS
+        // =====================================================================
+
+        function setupEventListeners() {
+            // Window Resize
+            window.addEventListener('resize', resizeCanvas);
+
+            // Rows Slider (n)
+            elements.rowsSlider.addEventListener('input', (e) => {
+                state.n = parseInt(e.target.value);
+                elements.rowsVal.textContent = state.n;
+                resetSimulation(true);
+            });
+
+            // Probability Slider (p)
+            elements.probSlider.addEventListener('input', (e) => {
+                state.p = parseFloat(e.target.value);
+                elements.probVal.textContent = state.p.toFixed(2);
+                updateStatsUI();
+            });
+
+            // Probability Quick Presets
+            elements.presetP025.addEventListener('click', () => setProbability(0.25));
+            elements.presetP050.addEventListener('click', () => setProbability(0.50));
+            elements.presetP075.addEventListener('click', () => setProbability(0.75));
+
+            function setProbability(val) {
+                state.p = val;
+                elements.probSlider.value = val;
+                elements.probVal.textContent = val.toFixed(2);
+                updateStatsUI();
+            }
+
+            // Speed Slider
+            elements.speedSlider.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value);
+                state.speed = val / 5; // Scale [1..10] -> [0.2x .. 2.0x]
+                elements.speedVal.textContent = state.speed.toFixed(1) + 'x';
+            });
+
+            // Drop Action Buttons
+            elements.btnDrop1.addEventListener('click', () => triggerDrops(1));
+            elements.btnDrop10.addEventListener('click', () => triggerDrops(10));
+            elements.btnDrop100.addEventListener('click', () => triggerDrops(100));
+            elements.btnDrop1000.addEventListener('click', () => triggerDrops(1000));
+            elements.btnDrop10000.addEventListener('click', () => triggerDrops(10000));
+
+            // Auto-Drop Toggle
+            elements.btnAutoDrop.addEventListener('click', toggleAutoDrop);
+
+            function toggleAutoDrop() {
+                state.isAutoDropping = !state.isAutoDropping;
+                if (state.isAutoDropping) {
+                    elements.autoDropDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping';
+                    elements.autoDropLabel.textContent = 'Stop';
+                    elements.btnAutoDrop.classList.add('border-emerald-500/80', 'bg-emerald-500/10');
+                    
+                    state.autoDropTimer = setInterval(() => {
+                        triggerDrops(1);
+                    }, 150 / state.speed);
+                } else {
+                    elements.autoDropDot.className = 'w-2 h-2 rounded-full bg-slate-500';
+                    elements.autoDropLabel.textContent = 'Auto';
+                    elements.btnAutoDrop.classList.remove('border-emerald-500/80', 'bg-emerald-500/10');
+                    clearInterval(state.autoDropTimer);
+                }
+            }
+
+            // Reset Board Button
+            elements.btnReset.addEventListener('click', () => {
+                if (state.isAutoDropping) toggleAutoDrop();
+                resetSimulation(false);
+            });
+
+            // Toggle Theoretical Curve Checkbox
+            elements.toggleTheoretical.addEventListener('change', (e) => {
+                state.showTheoretical = e.target.checked;
+            });
+
+            // Audio Toggle Button
+            elements.btnAudio.addEventListener('click', () => {
+                initAudio();
+                state.isMuted = !state.isMuted;
+                elements.iconAudioOn.classList.toggle('hidden', state.isMuted);
+                elements.iconAudioOff.classList.toggle('hidden', !state.isMuted);
+                elements.labelAudio.textContent = state.isMuted ? 'Muted' : 'Audio On';
+            });
+
+            // CSV Export Button
+            elements.btnExportCSV.addEventListener('click', exportSessionToCSV);
+
+            // Modal Controls
+            elements.btnMathInfo.addEventListener('click', () => {
+                elements.modalMath.classList.remove('opacity-0', 'pointer-events-none');
+            });
+
+            const closeModal = () => {
+                elements.modalMath.classList.add('opacity-0', 'pointer-events-none');
+            };
+
+            elements.btnCloseModal.addEventListener('click', closeModal);
+            elements.btnCloseModalBottom.addEventListener('click', closeModal);
+            elements.modalMath.addEventListener('click', (e) => {
+                if (e.target === elements.modalMath) closeModal();
+            });
+
+            // Canvas Click to Drop 1
+            elements.canvas.addEventListener('click', () => triggerDrops(1));
+        }
+
+        // =====================================================================
+        // INITIALIZATION ENTRY POINT
+        // =====================================================================
+        window.addEventListener('DOMContentLoaded', () => {
+            resizeCanvas();
+            resetSimulation(true);
+            setupEventListeners();
+            requestAnimationFrame(render);
+        });
+    </script>
+</body>
+</html>
